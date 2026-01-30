@@ -1,0 +1,9 @@
+spotipy
+python-dotenv
+requests
+os
+groq
+json
+sentence-transformers
+pydantic
+streamlit
