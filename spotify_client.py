@@ -4,6 +4,7 @@ import os # for getting exported env variables
 from dotenv import load_dotenv # reads variables from .env file and exports them in the os
 import json
 from debugging import save # import debugging json method
+import streamlit as st
 
 def get_spotify_client():
     # INITIALISES AND RETURNS A SPOTIFY WEB API CLIENT
@@ -184,6 +185,10 @@ def get_spotify_client_for_user():
             redirect_uri="https://ai-playlist-generator.streamlit.app/callback",
             scope="playlist-modify-private,playlist-modify-public,"
         ) # authenticate and get token
+        if "code" not in st.query_params:
+            auth_url = auth_manager.get_authorize_url()
+            st.write(f"[Login to Spotify]({auth_url})")
+            st.stop()
         print("[INFO] Spotify Web client initialised successfully for user.")
 
         # token_info = auth_manager.get_access_token() # print contents of token
