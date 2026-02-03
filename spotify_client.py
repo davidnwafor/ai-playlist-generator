@@ -4,7 +4,6 @@ import os # for getting exported env variables
 from dotenv import load_dotenv # reads variables from .env file and exports them in the os
 import json
 from debugging import save # import debugging json method
-import streamlit as st
 
 def get_spotify_client():
     # INITIALISES AND RETURNS A SPOTIFY WEB API CLIENT
@@ -182,32 +181,15 @@ def get_spotify_client_for_user():
         auth_manager = SpotifyOAuth(
             client_id=client_id,
             client_secret=client_secret,
-            redirect_uri="http://127.0.0.1:8888/callback", # https://ai-playlist-generator.streamlit.app/callback
+            redirect_uri="https://ai-playlist-generator.streamlit.app/callback", # https://ai-playlist-generator.streamlit.app/callback
             scope="playlist-modify-private,playlist-modify-public,"
         ) # authenticate and get token
-        
-        if "spotify_token_info" in st.session_state:
-            token_info = st.session_state["spotify_token_info"]
-            return spotipy.Spotify(auth=token_info["access_token"])
-            
-        if "code" in st.query_params:
-            code = st.query_params["code"]
-            token_info = oauth.get_access_token(code, as_dict=True)
-            st.session_state["spotify_token_info"] = token_info
-            # clear params to prevent re-processing on reruns
-            st.query_params.clear()
-            return spotipy.Spotify(auth=token_info["access_token"])
-
-        auth_url = oauth.get_authorize_url()
-        st.link_button("Connect Spotify", auth_url)
-        st.stop()
-        
         print("[INFO] Spotify Web client initialised successfully for user.")
 
         # token_info = auth_manager.get_access_token() # print contents of token
         # print(token_info)
 
-        # return spotipy.Spotify(auth_manager=auth_manager)
+        return spotipy.Spotify(auth_manager=auth_manager)
     
     except Exception as e:
         print(f"[ERROR] Failed to initialise Spotify client for user: {e}")
