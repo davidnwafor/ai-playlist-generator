@@ -28,7 +28,7 @@ def display_tracks(session_state_tracks):
         with cols[i % 4]: # within the current column index; i % 4 gives 0-3, which gives 4 tracks per row
             with st.container(border=True): # within the column border (creates a visual card container with a border)
                 # display the necessary track information
-                st.image(track["album_cover"],use_container_width=True) # expands image to fill the container width
+                st.image(track["album_cover"],width="stretch") # expands image to fill the container width
                 st.write(f"{track['track']}")
                 st.caption(track["artists"])
                 st.markdown(f"[Listen in Spotify]({track['spotify_url']})")
