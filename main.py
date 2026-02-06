@@ -18,20 +18,24 @@ if "ranked_tracks" not in st.session_state:
 if submitted and prompt.strip():
     with st.spinner("Generating playlist..."):
 
+        # set up clients
+        gr = get_groq_client() # start groq client
+        sp = get_spotify_client() # start spotify client
+
         # 2. get user input
         user_input = prompt
 
         # 3. extract a dataset of tracks from an llm
-        dataset_of_tracks = prompt_llm_for_dataset(user_input) # store as dictionary
+        dataset_of_tracks = prompt_llm_for_dataset(gr, user_input) # store as dictionary
 
         # 4. extract a description of each track from an llm
-        dataset_of_tracks_with_descriptions = prompt_llm_for_descriptions(json.dumps(dataset_of_tracks, indent=2)) # send tracks dict as a JSON string first - store as dictionary
+        dataset_of_tracks_with_descriptions = prompt_llm_for_descriptions(gr, json.dumps(dataset_of_tracks, indent=2)) # send tracks dict as a JSON string first - store as dictionary
 
         # 5. retrieve ids for each track via spotify
-        dataset_of_tracks_with_ids_and_desc = get_track_ids(dataset_of_tracks_with_descriptions) # store as dictionary
+        dataset_of_tracks_with_ids_and_desc = get_track_ids(sp, dataset_of_tracks_with_descriptions) # store as dictionary
 
         # 6. get more data via spotify
-        updated_tracks = update_dataset_of_tracks(dataset_of_tracks_with_ids_and_desc)
+        updated_tracks = update_dataset_of_tracks(sp, dataset_of_tracks_with_ids_and_desc)
 
         # 7. find most similar tracks using an embedding model
         top_tracks = get_most_similar_tracks(user_input, updated_tracks) # store as list
