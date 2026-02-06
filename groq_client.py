@@ -44,11 +44,11 @@ def get_groq_client(): # method that returns Groq API client
         raise
 
 # LLM for track dataset extraction
-def prompt_llm_for_dataset(user_input):
+def prompt_llm_for_dataset(client, user_input):
     # SENDS A USER DESCRIPTION TO GROQ AND RETRIEVES 50 TRACKS
     print("\n[STEP] Extracting dataset of tracks from user prompt...")
     try:
-        client = get_groq_client() # get Groq API client
+        # client = get_groq_client() # get Groq API client
 
         # initial system prompt to set up LLM before user prompt
         system_prompt = """You are a music recommendation expert.
@@ -123,11 +123,11 @@ def prompt_llm_for_dataset(user_input):
         print(f"[ERROR] Unexpected error in prompt_llm_for_dataset: {e}")
 
 # LLM for track descriptions
-def prompt_llm_for_descriptions(list_of_tracks):
+def prompt_llm_for_descriptions(client, list_of_tracks):
     # SENDS TRACKS TO GROQ TO RETRIEVE DESCRIPTIONS
     print("\n[STEP] Generating descriptions for each track...")
     try:
-        client = get_groq_client() # get Groq API client
+        # client = get_groq_client() # get Groq API client
 
         # initial system prompt to set up LLM before user prompt
         system_prompt = """You are a music recommendation expert.
