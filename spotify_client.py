@@ -4,6 +4,7 @@ import os # for getting exported env variables
 from dotenv import load_dotenv # reads variables from .env file and exports them in the os
 import json
 from debugging import save # import debugging json method
+import webbrowser # for opening playlist in a new tab
 
 def get_spotify_client():
     # INITIALISES AND RETURNS A SPOTIFY WEB API CLIENT
@@ -34,12 +35,12 @@ def get_spotify_client():
         raise
 
 # method that searches for a track in Spotify and returns its ID
-def search_track(artists, song):
+def search_track(sp, artists, song):
     # SEARCHES FOR A SEED TRACK AND RETRIEVES ITS IDS
     print(f"\n[STEP] SEARCHING SPOTIFY FOR TRACK: {song} BY {artists}")
 
     try:
-        sp = get_spotify_client() # start client
+        # sp = get_spotify_client() # start client
         # print(sp.available_markets()) # get country codes, Ireland: IE, UK: GB, America: US
 
         print(f"[INFO] Searching for: {song} by {artists}...")
@@ -68,7 +69,7 @@ def search_track(artists, song):
         raise
 
 # method that gets track IDs and adds to JSON list of songs
-def get_track_ids(tracks):
+def get_track_ids(sp, tracks):
     # RETRIEVES LIST OF TRACK IDS
     print("\n[STEP] RETRIEVING TRACK IDS")
 
@@ -77,7 +78,7 @@ def get_track_ids(tracks):
         for t in tracks["tracks"]:
             artists = t["artists"] # get the artists from dictionary
             track = t["track"] # get the track from dictionary
-            track_id = search_track(artists, track) # call search method to retrieve ID
+            track_id = search_track(sp, artists, track) # call search method to retrieve ID
 
             if track_id: # if the ID exists
                 print("[INFO] Adding ID to JSON...")
@@ -114,9 +115,9 @@ def get_track_ids(tracks):
 
 
 # method that gets data of a track from its id
-def get_track_data(track_id):
+def get_track_data(sp, track_id):
     try:
-        sp = get_spotify_client() # start Spotify client
+        # sp = get_spotify_client() # start Spotify client
         print("[INFO] Calling Spotify Get Track API...")
         data = sp.track(track_id=track_id, market="GB") # call Spotify Get Track API and save the output
         # extract necessary details from Spotify's output
@@ -138,14 +139,14 @@ def get_track_data(track_id):
         raise
 
 # method that adds details from Spotify to LLM track dictionary 
-def update_dataset_of_tracks(tracks_list):
+def update_dataset_of_tracks(sp, tracks_list):
     # RETRIEVES TRACK DATA VIA SPOTIFY
     print("\n[STEP] RETRIEVE NECESSARY TRACK DATA")
     try:
         # loop through track dataset dictionary from LLM
         for t in tracks_list["tracks"]:
             print("[INFO] Updating Track data from Spotify...")
-            spotify_track_data = get_track_data(t["ID"]) # call Spotify's Get Track API with an ID and save the output
+            spotify_track_data = get_track_data(sp, t["ID"]) # call Spotify's Get Track API with an ID and save the output
             t["track"] = spotify_track_data["name"] # update track title in case it's inaccurate
             t["artists"] = spotify_track_data["artists"] # update contributing artists in case it's inaccurate
             t["spotify_url"] = spotify_track_data["spotify_url"] # add the rest of the necessary details
@@ -181,7 +182,7 @@ def get_spotify_client_for_user():
         auth_manager = SpotifyOAuth(
             client_id=client_id,
             client_secret=client_secret,
-            redirect_uri="https://ai-playlist-generator.streamlit.app/callback", # https://ai-playlist-generator.streamlit.app/callback
+            redirect_uri="http://127.0.0.1:8888/callback", # https://ai-playlist-generator.streamlit.app/callback
             scope="playlist-modify-private,playlist-modify-public,"
         ) # authenticate and get token
         print("[INFO] Spotify Web client initialised successfully for user.")
@@ -211,6 +212,7 @@ def create_playlist(playlist_name, description):
         description = description
     )
     playlist_id = playlist["id"] # get playlist id
+    playlist_url = playlist["external_urls"]["spotify"] # get playlist url
     print(f"[INFO] Created playlist: {playlist_id} - {playlist_name}")
 
     # Adding tracks to the playlist created
@@ -229,5 +231,7 @@ def create_playlist(playlist_name, description):
     )
 
     print("\n[RESULT] Sucessfully added tracks to playlist")
+
+    webbrowser.open_new_tab(playlist_url) # open playlist in a new tab
 
 # create_playlist(playlist_name="Test Playlist by AI", description="User prompt")
