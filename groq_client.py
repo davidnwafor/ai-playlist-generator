@@ -8,20 +8,10 @@ from debugging import save # import debugging json method
 class CandidateTrack(BaseModel): # class for storing track data as a dict
     artists: str
     track: str
+    description: str
 
 class CandidateTrackList(BaseModel): # class for storing track dictionaries in a list
     tracks: list[CandidateTrack]
-
-class DescribedTrack(BaseModel): # class for storing track data with description as a dict
-    artists: str
-    track: str
-    description: str
-
-class DescribedTrackList(BaseModel): # class for storing updated track dictionaries in a list
-    tracks: list[DescribedTrack]
-
-# Global setup
-# user_prompt = "hype trap songs" # user prompt
 
 def get_groq_client(): # method that returns Groq API client
     # INITIALISES AND RETURNS A GROQ API CLIENT
@@ -48,36 +38,123 @@ def prompt_llm_for_dataset(client, user_input):
     # SENDS A USER DESCRIPTION TO GROQ AND RETRIEVES 50 TRACKS
     print("\n[STEP] Extracting dataset of tracks from user prompt...")
     try:
-        # client = get_groq_client() # get Groq API client
-
         # initial system prompt to set up LLM before user prompt
         system_prompt = """You are a music recommendation expert.
-        Given a user description, return 50 real, well-known Spotify songs that either fit the mood or suit the user's request.
-        Only return a JSON list of song titles and artists. Do not invent non-existent songs.
-        If a track has multiple artists, join them with a comma and a space, e.g, "The Weeknd, JENNIE, Lily-Rose Depp"
 
-        Respond only with JSON using this format:
+        Your task is to generate a list of real, well-known Spotify tracks that match the user's request.
+        ALL tracks must exist on Spotify. Do NOT invent non-existent tracks. Do NOT return albums. Do NOT return duplicate tracks.
+        Provide a one-sentence summary for each track, focusing on its mood, lyrical theme and emotional impact.
+        Do NOT reference the user's request in the summary, pretend the user's request does not exist when describing the track only.
+
+        Rules:
+        - Return a JSON list of EXACTLY 35 tracks.
+        - If a track has multiple artists, join them with a comma and a space, e.g, "The Weeknd, JENNIE, Lily-Rose Depp".
+        - If the track is credited to a group/duo name on Spotify, use that group/duo name exactly, e.g, use "The Carters" not "Beyoncé, JAY-Z" for "SUMMER"
+        - If you are unsure whether a song exists, DO NOT include it.
+        - Do NOT return dupllicate tracks.
+        - Do NOT reference or include the user's request in the track summaries.
+        - Output MUST be valid JSON and match the schema exactly.
+
+        ---
+
+        Example 1:
+        User description: "chill late night drive"
+
+        Response:
         {
             "tracks": [
                 {
                     "artists": "Drake",
-                    "track": "Headlines"
+                    "track": "Hold On, We're Going Home",
+                    "description": "A silky-smooth '80s-tinged R&B love letter that feels like driving through city lights with the windows down and your heart wide open."
                 },
                 {
-                    "artists": "Avicii",
-                    "track": "Wake Me Up"
+                    "artists": "Frank Ocean",
+                    "track": "Nights",
+                    "description": "A shape-shifting R&B odyssey that splits your life into before-and-after, capturing the restless energy of late-night overthinking and emotional transition."
                 },
                 {
-                    "artists": "Taylor Swift",
-                    "track": "You Belong With Me"
+                    "artists": "The Weeknd",
+                    "track": "After Hours",
+                    "description": "A dark, cinematic synth-pop confession where Abel spirals through heartbreak, regret, and desperate attempts to win back love at 3 AM."
+                }
+            ]
+        }
+
+        ---
+
+        Example 2:
+        User description: "high energy gym workout music"
+
+        Response:
+        {
+            "tracks": [
+                {
+                    "artists": "Travis Scott, Drake",
+                    "track": "SICKO MODE",
+                    "description": "A shape-shropping Houston fever dream where Travis and Drake trade verses over beat-switch fireworks, capturing the surreal high of living larger than life."
+                },
+                {
+                    "artists": "Logic",
+                    "track": "Keanu Reeves",
+                    "description": "A swagger-heavy flex track that pairs rapid-fire punchlines with cinematic strings, letting Logic brag about action-hero fame while winking at the audience."
+                },
+                {
+                    "artists": "Future",
+                    "track": "Stick Talk",
+                    "description": "A menacing trap banger dripping with lean-soaked confidence, where Future turns street paranoia into a hypnotic celebration of power and survival."
+                }
+            ]
+        }
+
+        ---
+
+        Example 3:
+        User description: "sad rnb breakup songs"
+
+        Response:
+        {
+            "tracks": [
+                {
+                    "artists": "SZA",
+                    "track": "Nobody Gets Me",
+                    "description": "A heartbreakingly raw alt-R&B ballad where SZA's cracked vocals plead over lonely guitar, begging one last lover to stay because no one else sees her clearly."
+                },
+                {
+                    "artists": "Summer Walker",
+                    "track": "Playing Games",
+                    "description": "A smoky, slow-burn R&B warning shot that mixes playful melodies with cold honesty, calling out a partner who texts sweet nothings while hiding the truth."
                 },
                 {
                     "artists": "Lauryn Hill",
-                    "track": "Ex-Factor"
-                },
+                    "track": "Ex-Factor",
+                    "description": "A timeless, aching neo-soul confession where Lauryn's velvet voice untangles love's contradictions, turning personal pain into a universal hymn for anyone stuck on repeat."
+                }
+            ]
+        }
+
+        ---
+
+        Example 4:
+        User description: "Kanye West songs"
+
+        Response:
+        {
+            "tracks": [
                 {
                     "artists": "Kanye West, Chris Martin",
-                    "track": "Homecoming"
+                    "track": "Homecoming",
+                    "description": "A bittersweet piano-laced love letter to Chicago, where Kanye personifies his hometown as a childhood sweetheart and wrestles with the guilt of leaving her for fame."
+                },
+                {
+                    "artists": "Kanye West",
+                    "track": "Diamonds From Sierra Leone",
+                    "description": "A lavish soul-sample banger that sparkles with bravado before twisting into a guilt-ridden meditation on blood diamonds and the true cost of hip-hop luxury."
+                },
+                {
+                    "artists": "Kanye West, Big Sean, 2 Chainz, Pusha T",
+                    "track": "Mercy",
+                    "description": "A trunk-rattling posse cut built on eerie synths and slow-rolling swagger, where four MCs trade flamboyant punchlines about cars, women, and success over a hauntingly sparse beat."
                 }
             ]
         }
@@ -85,25 +162,26 @@ def prompt_llm_for_dataset(client, user_input):
 
         print("[DEBUG] Sending tracks request to Groq API...")
         response = client.chat.completions.create(
-                model="openai/gpt-oss-120b", # openai/gpt-oss-120b llama-3.3-70b-versatile
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user", 
-                        "content": user_input
-                    }
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "candidate_tracks",
-                        "schema": CandidateTrackList.model_json_schema()
-                    }
+            model="moonshotai/kimi-k2-instruct-0905", # openai/gpt-oss-120b llama-3.3-70b-versatile
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user", 
+                    "content": user_input
                 }
-            )
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "candidate_tracks",
+                    "schema": CandidateTrackList.model_json_schema()
+                }
+            },
+            temperature=0.6 # controls randomness
+        )
 
         print("[DEBUG] Raw LLM response received. Attempting to parse JSON output...")
         tracks = json.loads(response.choices[0].message.content)
@@ -121,89 +199,3 @@ def prompt_llm_for_dataset(client, user_input):
         print(response.choices[0].message.content)
     except Exception as e:
         print(f"[ERROR] Unexpected error in prompt_llm_for_dataset: {e}")
-
-# LLM for track descriptions
-def prompt_llm_for_descriptions(client, list_of_tracks):
-    # SENDS TRACKS TO GROQ TO RETRIEVE DESCRIPTIONS
-    print("\n[STEP] Generating descriptions for each track...")
-    try:
-        # client = get_groq_client() # get Groq API client
-
-        # initial system prompt to set up LLM before user prompt
-        system_prompt = """You are a music recommendation expert.
-        Given a JSON list of songs, containing artists and track information, write a one-sentence summary for each song. Focus on its mood, lyrical theme, genre and emotional impact. Avoid technical jargon and make it sound like a music critic describing the song to friend.
-        Return the given JSON list of song titles and artists with a description added to each entry.
-
-        Respond only with JSON using this format:
-        {
-            "tracks": [
-                {
-                    "artists": "Drake",
-                    "track": "Headlines",
-                    "description": "A confident, introspective hip-hop anthem where Drake reflects on fame, ambition, and staying true to himself."
-                },
-                {
-                    "artists": "Avicii",
-                    "track": "Wake Me Up",
-                    "description": "An uplifting EDM-folk fusion that captures the restless spirit of youth searching for purpose and belonging."
-                },
-                {
-                    "artists": "Taylor Swift",
-                    "track": "You Belong With Me",
-                    "description": "A catchy country-pop confession of teenage longing and romantic frustration wrapped in relatable storytelling."
-                },
-                {
-                    "artists": "Lauryn Hill",
-                    "track": "Ex-Factor",
-                    "description": "A soulful, emotionally raw R&B ballad about heartbreak, self-worth, and the pain of a toxic relationship."
-                },
-                {
-                    "artists": "Kanye West, Chris Martin",
-                    "track": "Homecoming",
-                    "description": "A nostalgic, piano-driven hip-hop track that metaphorically explores Kanye's complex relationship with his hometown and identity."
-                }
-            ]
-        }
-        """
-
-        print("[DEBUG] Sending descriptions request to Groq API...")
-        response = client.chat.completions.create(
-                model="openai/gpt-oss-120b", # openai/gpt-oss-120b llama-3.3-70b-versatile
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user", 
-                        "content": list_of_tracks
-                    }
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "described_tracks",
-                        "schema": DescribedTrackList.model_json_schema()
-                    }
-                }
-            )
-
-        print("[DEBUG] Raw LLM response received. Attempting to parse JSON output...")
-        tracks = json.loads(response.choices[0].message.content)
-
-        print("\n[RESULT] Descriptions of tracks extracted successfully:")
-        tracks_json = json.dumps(tracks, indent=2)
-        print(tracks_json)
-
-        save(tracks, "described_candidate_tracks.json") # save json file for debugging
-        return tracks
-    
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] Failed to parse JSON response: {e}")
-        print("[DEBUG] Raw output was:")
-        print(response.choices[0].message.content)
-    except Exception as e:
-        print(f"[ERROR] Unexpected error in prompt_llm_for_descriptions: {e}")
-
-
-# prompt_llm_for_descriptions(json.dumps(prompt_llm_for_dataset(user_prompt), indent=2))
