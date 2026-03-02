@@ -5,6 +5,7 @@ from dotenv import load_dotenv # reads variables from .env file and exports them
 import json
 from debugging import save # import debugging json method
 import webbrowser # for opening playlist in a new tab
+from concurrent.futures import ThreadPoolExecutor, as_completed # for parellisation
 
 def get_spotify_client():
     # INITIALISES AND RETURNS A SPOTIFY WEB API CLIENT
@@ -48,7 +49,7 @@ def search_track(sp, artists, song):
             q = f"{artists} {song}",
             limit = 1, # we only need 1 track per search (retrieves the first suggestion)
             type = "track", # we only want tracks from the search, no albums, audiobooks etc
-            market = "GB", # different markets have a different pool of selection
+            market = "US", # different markets have a different pool of selection
         )
 
         items = results.get("tracks", {}).get("items", []) # retreive the the list of items from the search
@@ -68,70 +69,14 @@ def search_track(sp, artists, song):
         print(f"[ERROR] Unexpected error in search_tracks: {e}")
         raise
 
-# method that gets track IDs and adds to JSON list of songs
-def get_track_ids(sp, tracks):
-    # RETRIEVES LIST OF TRACK IDS
-    print("\n[STEP] RETRIEVING TRACK IDS")
-
-    try:
-        valid_tracks = [] # we'll be adding to this list since we only want track have IDs for
-        for t in tracks["tracks"]:
-            artists = t["artists"] # get the artists from dictionary
-            track = t["track"] # get the track from dictionary
-            track_id = search_track(sp, artists, track) # call search method to retrieve ID
-
-            if track_id: # if the ID exists
-                print("[INFO] Adding ID to JSON...")
-                t["ID"] = track_id
-                valid_tracks.append(t)
-            else:
-                print("[INFO] ID was not found so no ID was added.")
-
-        # we need to guarantee at least 1 ID, so if there's none we will use The Weeknd's Blinding Lights' ID, since it is the biggest song on Spotify
-        if not valid_tracks:
-            print("[INFO] No IDs were found at all. Using Blinding Lights as backup...")
-            valid_tracks.append(
-                {
-                    "artists": "The Weeknd",
-                    "track": "Blinding Lights",
-                    "description": "",
-                    "ID": "0VjIjW4GlUZAMYd2vXMi3b"
-                }
-            )
-        
-        print(f"\n[RESULT] Retrieved IDs for {len(valid_tracks)} out of {len(tracks["tracks"])} tracks:")
-
-        # format returning tracks
-        valid_tracks_formatted = {
-            "tracks": valid_tracks
-        }
-        print(json.dumps(valid_tracks_formatted, indent=2))
-        save(valid_tracks_formatted, "candidate_tracks_with_ids.json") # save json file for debugging
-        return valid_tracks_formatted
-    
-    except Exception as e:
-        print(f"[ERROR] Unexpected error in get_seed_track_ids: {e}")
-        raise
-
-
-# method that gets data of a track from its id
-def get_track_data(sp, track_id):
+# method that gets all data of tracks from a list of ids
+def get_tracks_data(sp, track_ids):
     try:
         # sp = get_spotify_client() # start Spotify client
-        print("[INFO] Calling Spotify Get Track API...")
-        data = sp.track(track_id=track_id, market="GB") # call Spotify Get Track API and save the output
-        # extract necessary details from Spotify's output
-        track_info = {
-            "name": data["name"], # get track name
-            "artists": ", ".join([a["name"] for a in data["artists"]]), # get all contribuiting artists
-            "spotify_url": data["external_urls"]["spotify"], # get spotify link to play song
-            "uri": data["uri"], # get spotify uri for playlist creation
-            "album_cover": data["album"]["images"][0]["url"], # 0 = 640 pixels, 1=300 pixels, 2 = 64 pixels
-            "album_name": data["album"]["name"], # get album name
-        }
-        # return json.dumps(track_info, indent=2)
-        print(f"[INFO] Retrieved data for {track_info["artists"]} - {track_info["name"]}")
-        return track_info
+        print("[INFO] Calling Spotify Get Tracks API...")
+        data = sp.tracks(tracks=track_ids, market="GB") # call Spotify Get Track API and save the output
+        return data
+
     except spotipy.exceptions.SpotifyException as e:
         print(f"[ERROR] Spotify API error: {e}")
     except Exception as e:
@@ -143,17 +88,29 @@ def update_dataset_of_tracks(sp, tracks_list):
     # RETRIEVES TRACK DATA VIA SPOTIFY
     print("\n[STEP] RETRIEVE NECESSARY TRACK DATA")
     try:
-        # loop through track dataset dictionary from LLM
+        ids = [] # extract ids into a list
         for t in tracks_list["tracks"]:
+            ids.append(t["ID"])
+
+        if not ids:
+            print("[WARN] No track IDs found.")
+            return tracks_list
+
+        tracks_resp = get_tracks_data(sp, ids) # call Spotify's Get Several Tracks API with list of all IDs and save output
+
+        for t, tr in zip(tracks_list["tracks"], tracks_resp["tracks"]): # loop through both tracks and API response lists
+            if not tr: # if for some reason the API track response doesn't exist, skip
+                print(f"[WARN] Spotify returned None for ID={t.get('ID')}")
+                continue
+
             print("[INFO] Updating Track data from Spotify...")
-            spotify_track_data = get_track_data(sp, t["ID"]) # call Spotify's Get Track API with an ID and save the output
-            t["track"] = spotify_track_data["name"] # update track title in case it's inaccurate
-            t["artists"] = spotify_track_data["artists"] # update contributing artists in case it's inaccurate
-            t["spotify_url"] = spotify_track_data["spotify_url"] # add the rest of the necessary details
-            t["uri"] = spotify_track_data["uri"]
-            t["album_cover"] = spotify_track_data["album_cover"]
-            t["album_name"] = spotify_track_data["album_name"]
-            print("[INFO] Updated Track data")
+            t["track"] = tr["name"] # get track name and update in case it's inaccurate
+            t["artists"] = ", ".join([a["name"] for a in tr["artists"]]) # get all contribuiting artists and update in case it's inaccurate
+            t["spotify_url"] = tr["external_urls"]["spotify"] # get spotify link to play song
+            t["uri"] = tr["uri"] # get spotify uri for playlist creation
+            t["album_cover"] = tr["album"]["images"][0]["url"] # 0 = 640 pixels, 1=300 pixels, 2 = 64 pixels
+            t["album_name"] = tr["album"]["name"] # get album name
+            print(f"[INFO] Updated {t['artists']} - {t['track']}")
 
         print("\n[RESULT] Sucessfully updated track set")
         save(tracks_list, "final_candidate_tracks.json") # save json file for debugging
@@ -234,4 +191,58 @@ def create_playlist(playlist_name, description):
 
     webbrowser.open_new_tab(playlist_url) # open playlist in a new tab
 
-# create_playlist(playlist_name="Test Playlist by AI", description="User prompt")
+# method that gets track IDs concurrently and adds to JSON list of songs
+def get_track_ids_parallel(sp, tracks):
+    # Parallel version of get_track_ids()
+    # RETRIEVES LIST OF TRACK IDS
+    print("\n[STEP] RETRIEVING TRACK IDS")
+
+    try:
+        valid_tracks = [] # we'll be adding to this list since we only want track have IDs for
+
+        def _search_one(t): # helper function that searches for 1 Spotify track
+            artists = t["artists"] # get the artists from dictionary
+            track = t["track"] # get the track from dictionary
+            track_id = search_track(sp, artists, track) # call search method to retrieve ID
+            return t, track_id # return both the original track dictionary and retrieved ID, that way we can attach the ID later
+
+        # create a pool of worker threads, max_workers is how many run at once - in this case, 10
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            # submit all track searches to run in parallel
+            futures = [] # initial list of Future objects
+            for t in tracks["tracks"]:
+                future = ex.submit(_search_one, t) # start the function in a new thread, which returns a Future object
+                futures.append(future) # collect returned Future object and store in a list
+
+            # iterate over results as soon as each thread finishes
+            for f in as_completed(futures):
+                # as_completed(...) yields futures in the order they finish, not the order they started
+                t, track_id = f.result() # unpack the tupled result
+                if track_id: # if the id exists
+                    print("[INFO] Adding ID to JSON...")
+                    t["ID"] = track_id
+                    valid_tracks.append(t)
+                else:
+                    print("[INFO] ID was not found so no ID was added.")
+
+        # we need to guarantee at least 1 ID, so if there's none we will use The Weeknd's Blinding Lights' ID, since it is the biggest song on Spotify
+        if not valid_tracks:
+            print("[INFO] No IDs were found at all. Using Blinding Lights as backup...")
+            valid_tracks.append({
+                "artists": "The Weeknd",
+                "track": "Blinding Lights",
+                "description": "",
+                "ID": "0VjIjW4GlUZAMYd2vXMi3b"
+            })
+
+        print(f"\n[RESULT] Retrieved IDs for {len(valid_tracks)} out of {len(tracks["tracks"])} tracks:")
+        # format returning tracks
+        valid_tracks_formatted = {
+            "tracks": valid_tracks
+        }
+        print(json.dumps(valid_tracks_formatted,indent=2))
+        save(valid_tracks_formatted, "candidate_tracks_with_ids.json") # save json file for debugging
+        return valid_tracks_formatted
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in get_track_ids_parallel: {e}")
+        raise
