@@ -2,40 +2,10 @@ from sentence_transformers import SentenceTransformer, util
 import json
 from debugging import save # import debugging json method
 
-# user_input = "give me a trap playlist"
-# tracks_list = { 
-#     "tracks": [
-#         {
-#             "artists": "Drake",
-#             "track": "Headlines",
-#             "description": "A confident, introspective hip-hop anthem where Drake reflects on fame, ambition, and staying true to himself."
-#         },
-#         {
-#             "artists": "Avicii",
-#             "track": "Wake Me Up",
-#             "description": "An uplifting EDM-folk fusion that captures the restless spirit of youth searching for purpose and belonging."
-#         },
-#         {
-#             "artists": "Taylor Swift",
-#             "track": "You Belong With Me",
-#             "description": "A catchy country-pop confession of teenage longing and romantic frustration wrapped in relatable storytelling."
-#         },
-#         {
-#             "artists": "Lauryn Hill",
-#             "track": "Ex-Factor",
-#             "description": "A soulful, emotionally raw R&B ballad about heartbreak, self-worth, and the pain of a toxic relationship."
-#         },
-#         {
-#             "artists": "Kanye West",
-#             "track": "Homecoming",
-#             "description": "A nostalgic, piano-driven hip-hop track that metaphorically explores Kanye's complex relationship with his hometown and identity."
-#         }
-#     ]
-# }
 try:
     # 1. load a pretrained Sentence Transformer model
     print("[INFO] Loading text embedding model...")
-    model = SentenceTransformer("all-mpnet-base-v2") # all-MiniLM-L6-v2     all-mpnet-base-v2
+    model = SentenceTransformer("BAAI/bge-small-en-v1.5") # all-MiniLM-L6-v2     all-mpnet-base-v2
 except Exception as e:
     print(f"Failed to load embedding model: {e}")
     raise
@@ -47,7 +17,7 @@ def get_most_similar_tracks(user_input, tracks_list):
 
     try:
         # 2. add context to user input
-        user_input = f"Songs that match the vibe of: {user_input}"
+        user_input = f"Songs that match the vibe of {user_input}"
 
         # 3. extract descriptions to a list
         print("[INFO] Extracting track descriptions...")
@@ -56,7 +26,8 @@ def get_most_similar_tracks(user_input, tracks_list):
 
         descriptions = []
         for track in tracks_list["tracks"]:
-            descriptions.append(track["description"])
+            check = f"{track["track"]} by {track["artists"]} - {track["description"]}" # format descriptions
+            descriptions.append(check)
         # print(descriptions)
 
         # 4. encode user input and descriptions
@@ -91,5 +62,4 @@ def get_most_similar_tracks(user_input, tracks_list):
     
     except Exception as e:
         print(f"[ERROR] Unexpected error in get_most_similar_tracks: {e}")
-
-# get_most_similar_tracks(user_input, tracks_list)
+        raise
