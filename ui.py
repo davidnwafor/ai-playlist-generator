@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import time
 
 def setup_display():
     # method that sets up the initial display for the UI
@@ -32,3 +33,37 @@ def display_tracks(session_state_tracks):
                 st.write(f"{track['track']}")
                 st.caption(track["artists"])
                 st.markdown(f"[Listen in Spotify]({track['spotify_url']})")
+
+def initialise_session_state():
+    # initialise session state variables
+    if "generated" not in st.session_state:
+        st.session_state.generated = False # playlist has not been generated so set boolean to False
+    if "ranked_tracks" not in st.session_state:
+        st.session_state.ranked_tracks = [] # playlist has not been generated so set session ranked tracks to empty list
+
+class ProgressUI: # controller for progress bar and status text updates while a background task runs
+    def __init__(self): # UI elements for progress and timer
+        self.status = st.empty() # creates an empty placeholder in UI that will be replaced with status messages
+        self.progress_bar = st.progress(0) # creates a progress bar inititalised at 0%, to be updated as the playlist generates
+        self.start = time.time() # stores the current time so we can calculate how long generation takes
+        self.status.markdown("**Starting...**") # display the initial status message to user
+
+    def update(self): # update progress and status message based on elapsed time
+        elapsed = time.time() - self.start # calculate how many seconds have passes since generation started
+
+        pct = min(0.95, elapsed / 10.0) # assuming generation takes about 10 seconds, get a value between 0 and 1, capping at 0.95 so we don't hit 1.0 before it's actually done
+        self.progress_bar.progress(int(pct * 100)) # convert decimal to percentage and update progress bar
+
+        # change status text at rough milestones
+        if elapsed < 1:
+            self.status.markdown("**Starting...**") # display the initial status message to user
+        elif elapsed < 6.5:
+            self.status.markdown("**Generating track ideas...**")
+        elif elapsed < 8.5:
+            self.status.markdown("**Finding tracks on Spotify...**")
+        else:
+            self.status.markdown("**Ranking best matches...**")
+
+    def done(self):
+        self.progress_bar.progress(100) # set progress to 100%
+        self.status.markdown("**Playlist generated!**") # success message
