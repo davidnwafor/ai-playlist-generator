@@ -165,7 +165,8 @@ def get_spotify_client_for_user():
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri="https://ai-playlist-generator.streamlit.app", # https://ai-playlist-generator.streamlit.app/callback
-            scope="playlist-modify-private,playlist-modify-public,"
+            scope="playlist-modify-private,playlist-modify-public,",
+            requests_timeout=5
         ) # authenticate and get token
         print("[INFO] Spotify Web client initialised successfully for user.")
 
