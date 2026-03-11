@@ -169,8 +169,8 @@ def get_spotify_client_for_user():
         ) # authenticate and get token
         print("[INFO] Spotify Web client initialised successfully for user.")
 
-        # token_info = auth_manager.get_access_token() # print contents of token
-        # print(token_info)
+        token_info = auth_manager.get_access_token() # print contents of token
+        print(token_info)
 
         return spotipy.Spotify(auth_manager=auth_manager)
     
