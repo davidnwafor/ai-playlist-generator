@@ -73,9 +73,34 @@ def search_track(sp, artists, song):
 def get_tracks_data(sp, track_ids):
     try:
         # sp = get_spotify_client() # start Spotify client
-        print("[INFO] Calling Spotify Get Tracks API...")
-        data = sp.tracks(tracks=track_ids, market="GB") # call Spotify Get Track API and save the output
-        return data
+        print("[INFO] Calling Spotify Get Track API...")
+        # data = sp.tracks(tracks=track_ids, market="GB") # call Spotify Get Track API and save the output NOTE: no longer needed because of migration 9/3/25
+        # return data
+        # NOTE: the below logic replicates the deprecated batch Several Tracks call (9/3/25) using threads
+        # RETRIEVES TRACK DATA IN PARALLEL
+        if not track_ids: # safety check for if no ids were passed in
+            print("[WARN] No track IDs provided.")
+            return {"tracks": []}
+        
+        def _get_one(index, track_id): # helper function that gets data 1 Spotify track
+            tr = sp.track(track_id, market="US") # call Spotify Get Track
+            return index, tr # returning index to store original placement
+        
+        tracks = [None] * len(track_ids) # placeholder list to be filled
+
+        with ThreadPoolExecutor(max_workers=10) as ex: # create a pool of 10 worker threads
+            futures = [ # submit all API calls to run concurrently
+                ex.submit(_get_one, i, track_id)
+                for i, track_id in enumerate(track_ids)
+            ]
+            
+            for f in as_completed(futures): # loop over results as each thread finishes
+                index, tr = f.result() # get index and track response from thread result
+                tracks[index] = tr # store track response in correct position
+                print(f"[INFO] Retrieved data for track {index}!")
+
+        print("\n[RESULT] Successfully retrieved tracks metadata\n")
+        return {"tracks": tracks} # return results in the same structure as old Spotify Get Several Tracks response
 
     except spotipy.exceptions.SpotifyException as e:
         print(f"[ERROR] Spotify API error: {e}")
@@ -159,10 +184,10 @@ def create_playlist(playlist_name, description):
     print("\n[STEP] CREATING PLAYLIST FOR USER")
     sp = get_spotify_client_for_user() # start client
 
-    user_id = sp.current_user()["id"] # get user id
+    # user_id = sp.current_user()["id"] # get user id # NOTE: no longer needed because of migration 9/3/25
 
-    playlist = sp.user_playlist_create( # create playlist
-        user = user_id,
+    playlist = sp.current_user_playlist_create( # create playlist
+        # user = user_id, # NOTE: no longer needed because of migration 9/3/25
         name = playlist_name,
         public = False,
         collaborative = False,
