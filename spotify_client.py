@@ -6,6 +6,7 @@ import json
 from debugging import save # import debugging json method
 import webbrowser # for opening playlist in a new tab
 from concurrent.futures import ThreadPoolExecutor, as_completed # for parellisation
+import streamlit as st
 
 def get_spotify_client():
     # INITIALISES AND RETURNS A SPOTIFY WEB API CLIENT
