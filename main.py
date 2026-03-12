@@ -57,7 +57,8 @@ if st.session_state.generated:
     # 8. optional step for user to save playlist to their account
     if st.button("Save to your Spotify account"):
         with st.spinner("Saving playlist..."):
-            create_playlist(playlist_name="AI Playlist", description=prompt)
+            playlist_url = create_playlist(playlist_name="AI Playlist", description=prompt)
         st.success("Playlist saved!")
+        st.markdown(f"[Open playlist in Spotify]({playlist_url})")
 
     display_tracks(st.session_state.ranked_tracks)
