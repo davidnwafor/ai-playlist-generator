@@ -161,17 +161,17 @@ def get_spotify_client_for_user():
             print("[ERROR] CLIENT_SECRET not found in .env file")
             raise EnvironmentError("Missing CLIENT_SECRET in .env")
         
-        auth_manager = SpotifyOAuth(
+        auth_manager = SpotifyPKCE(
             client_id=client_id,
-            client_secret=client_secret,
+            # client_secret=client_secret,
             redirect_uri="https://ai-playlist-generator.streamlit.app", # https://ai-playlist-generator.streamlit.app/callback
             scope="playlist-modify-private,playlist-modify-public,",
-            requests_timeout=5
+            # requests_timeout=5
         ) # authenticate and get token
         print("[INFO] Spotify Web client initialised successfully for user.")
 
-        token_info = auth_manager.get_access_token() # print contents of token
-        print(token_info)
+        # token_info = auth_manager.get_access_token() # print contents of token
+        # print(token_info)
 
         return spotipy.Spotify(auth_manager=auth_manager)
     
