@@ -181,15 +181,6 @@ def get_spotify_oauth():
 def get_spotify_client_for_user():
     try:
         auth_manager = get_spotify_oauth()
-
-        # Step 2: Spotify redirected back with ?code=...
-        query_params = st.query_params
-        if "code" in query_params:
-            code = query_params["code"]
-            token_info = auth_manager.get_access_token(code, as_dict=True, check_cache=False)
-            st.session_state["spotify_token"] = token_info
-            st.query_params.clear()  # clean the URL
-            return spotipy.Spotify(auth=token_info["access_token"])
     
         # Step 3: Token already retrieved in this session
         if "spotify_token" in st.session_state:
