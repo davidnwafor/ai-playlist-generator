@@ -6,6 +6,17 @@ import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 import time
 
+if "code" in st.query_params:
+    try:
+        auth_manager = get_spotify_oauth()
+        code = st.query_params["code"]
+        token_info = auth_manager.get_access_token(code, as_dict=True, check_cache=False)
+        st.session_state["spotify_token"] = token_info
+        st.query_params.clear()  # remove ?code= from URL
+        st.success("Spotify account connected! Click 'Save to your Spotify account' again to save your playlist.")
+    except Exception as e:
+        st.error(f"Failed to connect Spotify account: {e}")
+        
 # function that runs the playlist generation using the user input
 def generate_playlist(user_input):
     # 1. set up clients
