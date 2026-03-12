@@ -144,8 +144,7 @@ def update_dataset_of_tracks(sp, tracks_list):
         print(f"[ERROR] Unexpected error in update_dataset_of_tracks: {e}")
         raise
 
-# intialise client with additional settings for user to login to their account
-def get_spotify_client_for_user():
+def get_spotify_oauth():
     # INITIALISES AND RETURNS A SPOTIFY WEB API CLIENT
     print("\n[INFO] Setting up Spotify user client...")
     try:
@@ -161,12 +160,11 @@ def get_spotify_client_for_user():
             print("[ERROR] CLIENT_SECRET not found in .env file")
             raise EnvironmentError("Missing CLIENT_SECRET in .env")
         
-        auth_manager = SpotifyPKCE(
+        auth_manager = SpotifyOAuth(
             client_id=client_id,
-            # client_secret=client_secret,
+            client_secret=client_secret,
             redirect_uri="https://ai-playlist-generator.streamlit.app", # https://ai-playlist-generator.streamlit.app/callback
-            scope="playlist-modify-private,playlist-modify-public,",
-            # requests_timeout=5
+            scope="playlist-modify-private,playlist-modify-public,"
         ) # authenticate and get token
         print("[INFO] Spotify Web client initialised successfully for user.")
 
@@ -174,7 +172,34 @@ def get_spotify_client_for_user():
         # print(token_info)
 
         return spotipy.Spotify(auth_manager=auth_manager)
+
+# intialise client with additional settings for user to login to their account
+def get_spotify_client_for_user():
+    try:
+        auth_manager = get_spotify_oauth()
+
+        # Step 2: Spotify redirected back with ?code=...
+        query_params = st.query_params
+        if "code" in query_params:
+            code = query_params["code"]
+            token_info = auth_manager.get_access_token(code, as_dict=True, check_cache=False)
+            st.session_state["spotify_token"] = token_info
+            st.query_params.clear()  # clean the URL
+            return spotipy.Spotify(auth=token_info["access_token"])
     
+        # Step 3: Token already retrieved in this session
+        if "spotify_token" in st.session_state:
+            token_info = st.session_state["spotify_token"]
+            # Refresh if expired
+            if auth_manager.is_token_expired(token_info):
+                token_info = auth_manager.refresh_access_token(token_info["refresh_token"])
+                st.session_state["spotify_token"] = token_info
+            return spotipy.Spotify(auth=token_info["access_token"])
+    
+        # Step 1: No token yet — redirect user to Spotify login
+        auth_url = auth_manager.get_authorize_url()
+        st.markdown(f"[Click here to log in to Spotify]({auth_url})")
+        st.stop()  # halt execution until user returns with code
     except Exception as e:
         print(f"[ERROR] Failed to initialise Spotify client for user: {e}")
         raise
@@ -215,7 +240,7 @@ def create_playlist(playlist_name, description):
 
     print("\n[RESULT] Sucessfully added tracks to playlist")
 
-    webbrowser.open_new_tab(playlist_url) # open playlist in a new tab
+    return playlist_url # open playlist in a new tab
 
 # method that gets track IDs concurrently and adds to JSON list of songs
 def get_track_ids_parallel(sp, tracks):
