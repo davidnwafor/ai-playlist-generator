@@ -172,6 +172,9 @@ def get_spotify_oauth():
         # print(token_info)
 
         return spotipy.Spotify(auth_manager=auth_manager)
+    except Exception as e:
+        print(f"[ERROR] Failed to initialise Spotify client for user: {e}")
+        raise
 
 # intialise client with additional settings for user to login to their account
 def get_spotify_client_for_user():
